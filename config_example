@@ -1,0 +1,34 @@
+"""config.py contains temperature_manager config data"""
+
+import socket
+
+__version__ = '0.2'
+
+# Enter "F" for fahrenheit or "C" for celsius output.
+temperature_scale = "F"
+minimum_temperature = 40
+hour_seconds = 60 * 60
+email_alert_threshold = hour_seconds
+
+local_host = socket.gethostname()
+from_address = ''
+to_address = ''
+smtp_host = 'localhost'
+smtp_port = 25
+timeout = 60
+
+
+# IP address of Radio Thermostat device
+thermostat_address = ''
+# Match your Radio Thermostat model with 'Specific model classes' in radiotherm's
+# thermostat.py.  Compare with your thermostat's http://w.x.y.z/tstat/model.
+thermostat_model = ''
+
+gmail_user = ''
+gmail_password = ''
+spreadsheet = ''
+ds_worksheet = ''
+rt_worksheet = ''
+sheets = [ds_worksheet, rt_worksheet]
+
+# vim: tabstop=2: shiftwidth=2: expandtab:

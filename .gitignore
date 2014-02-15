@@ -1,0 +1,5 @@
+*.out
+*.pyc
+*.swp
+alert_sent*
+config.py
