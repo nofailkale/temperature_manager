@@ -2,13 +2,14 @@
 
 import socket
 
-__version__ = '0.2'
+__version__ = 0.3
 
 # Enter "F" for fahrenheit or "C" for celsius output.
 temperature_scale = "F"
 minimum_temperature = 40
 hour_seconds = 60 * 60
 email_alert_threshold = hour_seconds
+log_file = 'temperature_manager.log'
 
 local_host = socket.gethostname()
 from_address = ''

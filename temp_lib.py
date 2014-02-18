@@ -1,6 +1,6 @@
 """temp_lib.py contains shared helper functions for temperature_manager"""
 
-import os, sys, time, smtplib, socket, math
+import os, sys, time, smtplib, socket, math, logging, logging.handlers
 from functools import wraps
 
 import config
@@ -145,5 +145,28 @@ def get_gspread_client_login():
     print error
     raise
   return gc
+
+def get_logger():
+  """get_logger creates a Logger object for logging application output
+
+  :returns: returns a Logger object
+  :rtype: logging.Logger
+  """
+  format = '%(asctime)s - %(module)s - %(process)s - %(levelname)s - %(message)s'
+  try:
+    logger = logging.getLogger('temperature_manager')
+    logger.setLevel(logging.INFO)
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.WARNING)
+    rotate_handler = logging.handlers.RotatingFileHandler(config.log_file, maxBytes=1048576, backupCount=1)
+    formatter = logging.Formatter(format)
+    console_handler.setFormatter(formatter)
+    rotate_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+    logger.addHandler(rotate_handler)
+  except Exception, e:
+    error = "%s %s\n" % (e.__class__, e)
+    print error
+  return logger
 
 # vim: tabstop=2: shiftwidth=2: expandtab:

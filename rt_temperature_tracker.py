@@ -8,7 +8,8 @@
 import os, sys, glob, time, datetime, urllib2
 
 import config
-from temp_lib import send_mail, check_python_version, get_gspread_client_login, retry, alert_now
+from temp_lib import send_mail, check_python_version, get_gspread_client_login, \
+    retry, alert_now, get_logger
 
 import radiotherm
 # Dynamically load thermostat model class from config
@@ -25,13 +26,15 @@ minimum_temperature = config.minimum_temperature
 
 spreadsheet = config.spreadsheet
 
+log = get_logger()
+
 path_name, script_name = os.path.split(os.path.abspath(__file__))
 alert_file = os.path.abspath(path_name) + "/alert_sent_temperature_tracker"
 
 # retry connecting to thermostat because "No route to host" and "Connection
 # refused" urllib2.URLError exceptions are common.  Also handle retry 
 # for invalid temperature.
-@retry(Exception, tries=3, delay=30)
+@retry(Exception, tries=3, delay=60)
 def get_current_temp():
   """get_current_temp retrieves the current temperature from the thermostat
 
@@ -45,10 +48,12 @@ def get_current_temp():
     tstat = thermostat_model(config.thermostat_address).tstat
     current_temp = float(tstat['raw']['temp'])
     if not is_temp_valid(current_temp):
-      raise Exception("Value for given temperature invalid: '" + str(current_temp) + "'")
+      invalid_temp = "Value for given temperature invalid: " + str(current_temp)
+      log.error(invalid_temp)
+      raise Exception(invalid_temp)
   except Exception, e:
-    error = "%s %s\n" % (e.__class__, e)
-    print error
+    error = "get_current_temp error: %s %s" % (e.__class__, e)
+    log.error(error)
     raise
   return current_temp
 
@@ -68,39 +73,47 @@ def is_temp_valid(temp):
   else:
     return False
 
+log.info("BEGIN LOGGING")
+
 current_temp = None
 try:
   current_temp = get_current_temp()
+  log.info("Current temp returned: " + str(current_temp))
   spreadsheet_data = [datetime.datetime.now().isoformat(), current_temp]
+  log.info("Spreadsheet input generated: " + str(spreadsheet_data))
 except Exception, e:
-  error = "%s %s\n" % (e.__class__, e)
-  print error
+  error = "Error getting current temperature %s %s" % (e.__class__, e)
+  log.error(error)
   if alert_now(alert_file):
     send_mail(script_name, script_name + " running on '" + local_host + "' could not retrieve data properly from thermostat(" + config.thermostat_address + ")", error)
   sys.exit(1)
 
 if (current_temp <= minimum_temperature):
   error = "The current temperature is " + str(current_temp) + " degrees.  The alert threshold is " + str(minimum_temperature) + " degrees."
-  print error
+  log.error(error)
   if alert_now(alert_file):
     send_mail(script_name, "CRITICAL ALERT from " + script_name + ": Temperature reading passed alert threshold", error)
 
 try:
+  log.info("Attempting to login to Google.")
   gc = get_gspread_client_login()
 except Exception, e:
-  error = "%s %s\n" % (e.__class__, e)
-  print error
+  error = "Google login error: %s %s" % (e.__class__, e)
+  log.error(error)
   send_mail(script_name, script_name + " running on '" + local_host + "' could not authenticate for Google Docs access", error)
   sys.exit(3)
 
 try:
+  log.info("Opening worksheet to append data")
   worksheet = gc.open(spreadsheet).worksheet(config.rt_worksheet)
   worksheet.append_row(spreadsheet_data)
 except Exception, e:
-  error = "%s %s\n" % (e.__class__, e)
-  print error
+  error = "Error working with spreadsheet: %s %s" % (e.__class__, e)
+  log.error(error)
   if alert_now(alert_file):
     send_mail(script_name, script_name + " running on '" + local_host + "' could not update Google spreadsheet", error)
   sys.exit(4)
+
+log.info("END LOGGING")
 
 # vim: tabstop=2: shiftwidth=2: expandtab:
